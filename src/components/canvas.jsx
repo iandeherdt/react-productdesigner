@@ -9,7 +9,6 @@ export default class Canvas extends Component {
   componentDidMount() {
     this.canvas = findDOMNode(this);
     this.ctx = this.canvas.getContext('2d');
-    this.initTool(this.props.tool);
   }
 
   render() {

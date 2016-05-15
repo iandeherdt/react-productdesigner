@@ -1,10 +1,12 @@
 var webpack = require('webpack');
-
+var path = require('path');
+var EXAMPLES_DIR = path.resolve(__dirname, 'examples');
 module.exports = {
+
   entry: [
     'webpack-dev-server/client?http://localhost:8080',
     'webpack/hot/only-dev-server',
-    './src/index.jsx'
+    './examples/app.js'
   ],
   module: {
     loaders: [{
@@ -34,12 +36,12 @@ module.exports = {
     extensions: ['', '.js', '.jsx']
   },
   output: {
-    path: __dirname + '/dist',
-    publicPath: '/',
-    filename: 'bundle.js'
+    path: 'examples',
+    publicPath: '',
+    filename:'bundle.js'
   },
   devServer: {
-    contentBase: './dist',
+    contentBase: './examples',
     hot: true
   },
   plugins: [
