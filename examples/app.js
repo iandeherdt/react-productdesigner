@@ -1,11 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
-import Canvas from '../src/index'
+import ProductDesigner from '../src/index'
 
 var appElement = document.getElementById('app');
 
 ReactDOM.render(<div>
-        <Canvas />
+        <ProductDesigner width={400} height={400} />
       </div>,
   document.getElementById('app')
 )

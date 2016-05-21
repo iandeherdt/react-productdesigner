@@ -1,1 +1,1 @@
-module.exports = require('./components/canvas');
+module.exports = require('./components/productDesigner');
