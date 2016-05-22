@@ -5,13 +5,15 @@ var isRight = false;
 var isTop = false;
 var isBottom = false;
 var iAnchor;
-
-var isDown = false;
+var draggingImage = false;
+var resizing = false;
 var iW;
 var iH;
 var iLeft = 50;
 var iTop = 50;
 var iRight, iBottom, iOrientation;
+var startX;
+var startY;
 
 const resizeFunctions = {
 
@@ -76,7 +78,7 @@ export default class ProductDesigner extends Component {
     this.state = {image:null};
     this.handleMousemove = this.handleMousemove.bind(this);
   }
-  draw(withAnchors) {
+  draw(withAnchors, withBorders) {
     console.log('draw');
     if(this.state.image){
       let cx = iLeft + (iRight - iLeft) / 2;
@@ -93,8 +95,17 @@ export default class ProductDesigner extends Component {
           this.ctx.fillRect(iLeft, cy, border, border);
           this.ctx.fillRect(iRight - border, cy, border, border);
       }
+      // optionally draw the connecting anchor lines
+      if (withBorders) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(iLeft, iTop);
+          this.ctx.lineTo(iRight, iTop);
+          this.ctx.lineTo(iRight, iBottom);
+          this.ctx.lineTo(iLeft, iBottom);
+          this.ctx.closePath();
+          this.ctx.stroke();
+      }
     }
-
   }
   handleMousedown(e) {
     var offsetX = this.refs.canvas.offsetLeft;
@@ -102,17 +113,19 @@ export default class ProductDesigner extends Component {
     // tell the browser we'll handle this mousedown
     e.preventDefault();
     e.stopPropagation();
-    var mouseX = e.clientX - offsetX;
-    var mouseY = e.clientY - offsetY;
-    iAnchor = this.hitResizeAnchor(mouseX, mouseY);
-    isDown = (iAnchor);
+    startX = e.clientX - offsetX;
+    startY = e.clientY - offsetY;
+    iAnchor = this.hitResizeAnchor(startX, startY);
+    resizing = (iAnchor);
+    draggingImage = !resizing && this.hitImage(startX, startY);
   }
 
   handleMouseup(e) {
     // tell the browser we'll handle this mouseup
     e.preventDefault();
     e.stopPropagation();
-    isDown = false;
+    resizing = false;
+    draggingImage = false;
     this.draw(true);
   }
 
@@ -123,7 +136,7 @@ export default class ProductDesigner extends Component {
     e.preventDefault();
     e.stopPropagation();
     // return if we're not dragging
-    if (!isDown) {
+    if (!resizing && !draggingImage) {
         return;
     }
     // get MouseX/Y
@@ -131,10 +144,32 @@ export default class ProductDesigner extends Component {
     var mouseY = e.clientY - offsetY;
 
     // reset iLeft,iRight,iTop,iBottom based on drag
-    resizeFunctions[iAnchor](mouseX, mouseY);
+    if(resizing){
+      resizeFunctions[iAnchor](mouseX, mouseY);
+      this.draw(false, true);
+    }else if(draggingImage){
+        // move the image by the amount of the latest drag
+        var dx = mouseX - startX;
+        var dy = mouseY - startY;
+        iLeft += dx;
+        iTop += dy;
+        iRight += dx;
+        iBottom += dy;
+        // reset the startXY for next time
+        startX = mouseX;
+        startY = mouseY;
+
+        // redraw the image with border
+        this.draw(false, true);
+    }
+
 
     // redraw the resized image
-    this.draw(false);
+
+  }
+  hitImage(x, y) {
+    console.log('hitImage',(x > iLeft && x < iLeft + iW && y > iTop && y < iTop + iH), x, iLeft, iW, y, iTop, iH);
+    return (x > iLeft && x < iLeft + iW && y > iTop && y < iTop + iH);
   }
   hitResizeAnchor(x, y) {
 
@@ -212,7 +247,8 @@ export default class ProductDesigner extends Component {
           <div className="col s12">
             <canvas
               ref="canvas"
-              width={width}
+              id="canvas"
+              width={640}
               height={height}
               onUploadImage={this.onUploadImage}
             />
