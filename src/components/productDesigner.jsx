@@ -75,17 +75,18 @@ export default class ProductDesigner extends Component {
     this.draw = this.draw.bind(this);
     this.handleMousedown = this.handleMousedown.bind(this);
     this.handleMouseup = this.handleMouseup.bind(this);
-    this.state = {image:null};
+    this.state = {image:null, imageTool:false};
     this.handleMousemove = this.handleMousemove.bind(this);
+    this.setToolToText = this.setToolToText.bind(this);
+    this.setToolToPicture = this.setToolToPicture.bind(this);
   }
   draw(withAnchors, withBorders) {
-    console.log('draw');
     if(this.state.image){
       let cx = iLeft + (iRight - iLeft) / 2;
       let cy = iTop + (iBottom - iTop) / 2;
       this.ctx.clearRect(0, 0, this.refs.canvas.width, this.refs.canvas.height);
       this.ctx.drawImage(this.state.image, iLeft, iTop, iRight - iLeft, iBottom - iTop);
-      if (withAnchors) {
+      if (withAnchors && this.state.tool === "PICTURE") {
           this.ctx.fillRect(iLeft, iTop, border, border);
           this.ctx.fillRect(iRight - border, iTop, border, border);
           this.ctx.fillRect(iRight - border, iBottom - border, border, border);
@@ -108,64 +109,66 @@ export default class ProductDesigner extends Component {
     }
   }
   handleMousedown(e) {
-    var offsetX = this.refs.canvas.offsetLeft;
-    var offsetY = this.refs.canvas.offsetTop;
-    // tell the browser we'll handle this mousedown
-    e.preventDefault();
-    e.stopPropagation();
-    startX = e.clientX - offsetX;
-    startY = e.clientY - offsetY;
-    iAnchor = this.hitResizeAnchor(startX, startY);
-    resizing = (iAnchor);
-    draggingImage = !resizing && this.hitImage(startX, startY);
+    if(this.state.tool === "PICTURE"){
+      var offsetX = this.refs.canvas.offsetLeft;
+      var offsetY = this.refs.canvas.offsetTop;
+      // tell the browser we'll handle this mousedown
+      e.preventDefault();
+      e.stopPropagation();
+      startX = e.clientX - offsetX;
+      startY = e.clientY - offsetY;
+      iAnchor = this.hitResizeAnchor(startX, startY);
+      resizing = (iAnchor);
+      draggingImage = !resizing && this.hitImage(startX, startY);
+    }
   }
 
   handleMouseup(e) {
     // tell the browser we'll handle this mouseup
-    e.preventDefault();
-    e.stopPropagation();
-    resizing = false;
-    draggingImage = false;
-    this.draw(true);
+    if(this.state.tool === "PICTURE"){
+      e.preventDefault();
+      e.stopPropagation();
+      resizing = false;
+      draggingImage = false;
+      this.draw(true);
+    }
   }
 
   handleMousemove(e) {
-    var offsetX = this.refs.canvas.offsetLeft;
-    var offsetY = this.refs.canvas.offsetTop;
-    // tell the browser we'll handle this mousemove
-    e.preventDefault();
-    e.stopPropagation();
-    // return if we're not dragging
-    if (!resizing && !draggingImage) {
-        return;
-    }
-    // get MouseX/Y
-    var mouseX = e.clientX - offsetX;
-    var mouseY = e.clientY - offsetY;
+    if(this.state.tool === "PICTURE"){
+      var offsetX = this.refs.canvas.offsetLeft;
+      var offsetY = this.refs.canvas.offsetTop;
+      // tell the browser we'll handle this mousemove
+      e.preventDefault();
+      e.stopPropagation();
+      // return if we're not dragging
+      if (!resizing && !draggingImage) {
+          return;
+      }
+      // get MouseX/Y
+      var mouseX = e.clientX - offsetX;
+      var mouseY = e.clientY - offsetY;
 
-    // reset iLeft,iRight,iTop,iBottom based on drag
-    if(resizing){
-      resizeFunctions[iAnchor](mouseX, mouseY);
-      this.draw(false, true);
-    }else if(draggingImage){
-        // move the image by the amount of the latest drag
-        var dx = mouseX - startX;
-        var dy = mouseY - startY;
-        iLeft += dx;
-        iTop += dy;
-        iRight += dx;
-        iBottom += dy;
-        // reset the startXY for next time
-        startX = mouseX;
-        startY = mouseY;
-
-        // redraw the image with border
+      // reset iLeft,iRight,iTop,iBottom based on drag
+      if(resizing){
+        resizeFunctions[iAnchor](mouseX, mouseY);
         this.draw(false, true);
+      }else if(draggingImage){
+          // move the image by the amount of the latest drag
+          var dx = mouseX - startX;
+          var dy = mouseY - startY;
+          iLeft += dx;
+          iTop += dy;
+          iRight += dx;
+          iBottom += dy;
+          // reset the startXY for next time
+          startX = mouseX;
+          startY = mouseY;
+
+          // redraw the image with border
+          this.draw(false, true);
+      }
     }
-
-
-    // redraw the resized image
-
   }
   hitImage(x, y) {
     console.log('hitImage',(x > iLeft && x < iLeft + iW && y > iTop && y < iTop + iH), x, iLeft, iW, y, iTop, iH);
@@ -231,16 +234,38 @@ export default class ProductDesigner extends Component {
   }
   componentDidMount() {
     this.ctx = this.refs.canvas.getContext('2d');
-    this.uploader = this.refs.file;
-    this.uploader.addEventListener("change", this.readImage.bind(this, this.ctx), false);
     this.refs.canvas.onmousedown = this.handleMousedown;
     this.refs.canvas.onmousemove = this.handleMousemove;
     this.refs.canvas.onmouseup = this.handleMouseup;
     this.refs.canvas.onmouseout = this.handleMouseup;
+  }
+  setToolToText(){
+    this.setState({tool: "TEXT"})
+    this.draw(false,false);
+  }
+  setToolToPicture(){
+    this.setState({tool: "PICTURE"})
 
+  }
+  componentDidUpdate(){
+    if(this.state.tool === "PICTURE"){
+      this.uploader = this.refs.file;
+      this.uploader.addEventListener("change", this.readImage.bind(this, this.ctx), false);
+      this.draw(true,false);
+    }
   }
   render() {
     const {width, height} = this.props;
+    let toolBox = null;
+
+    if(this.state.tool === "PICTURE"){
+      toolBox = (<div className="file-field input-field">
+              <div className="btn">
+                <span>Upload foto</span>
+                <input ref="file" type="file"/>
+              </div>
+            </div>);
+    }
     return (
       <div className="container">
         <div className="row">
@@ -255,15 +280,17 @@ export default class ProductDesigner extends Component {
           </div>
         </div>
         <div className="row">
-          <div className="col s12">
-             <div className="file-field input-field">
-              <div className="btn">
-                <span>File</span>
-                <input ref="file" type="file"/>
-              </div>
-            </div>
+          <div className="col s6">
+            <a className="waves-effect waves-light btn" onClick={this.setToolToText}>Tekst</a>
           </div>
-
+          <div className="col s6">
+            <a className="waves-effect waves-light btn" onClick={this.setToolToPicture}>Afbeelding</a>
+          </div>
+        </div>
+        <div className="row">
+          <div className="col s12">
+            {toolBox}
+          </div>
         </div>
       </div>
     )
